@@ -1,0 +1,179 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Machine Learning, MATLAB Mini-Project 1: Sequential Estimators</title><meta name="generator" content="MATLAB 8.5"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2015-09-19"><meta name="DC.source" content="SequentialMLGaussian.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Machine Learning, MATLAB Mini-Project 1: Sequential Estimators</h1><p>Dennis Gavrilov, Andrew Koe, and Miraj Patel</p><pre class="codeinput"><span class="comment">% Part 1a) Sequential Maximum Likelihood (ML) Estimate for a Gaussian R.V.</span>
+clc; clear <span class="string">all</span>; close <span class="string">all</span>;
+<span class="comment">% Randomly choose a mean between 0-5, and Variance between 0-2</span>
+unknownMu = rand(1)*5;
+unknownSigma = rand(1)*sqrt(2);
+unknownVariance = unknownSigma^2;
+numberIterations = 1000;
+numberofTrials = 20;
+MLE_means = zeros(numberofTrials, numberIterations);
+MLE_variances = zeros(numberofTrials, numberIterations);
+
+tic;
+<span class="keyword">for</span> i = 1:numberIterations
+    <span class="keyword">for</span> t = 1:numberofTrials
+        <span class="comment">% Set number of samples to 10*iteration number</span>
+        N = 10*t;
+        muML = 0;
+        Xsamples = zeros(N, 1);
+
+        <span class="comment">% Generate each sample</span>
+        <span class="keyword">for</span> j = 1:N
+            x = normrnd(unknownMu, unknownSigma);
+            Xsamples(j) = x;
+
+            <span class="comment">% Adjust the sequential ML mean (mu) estimator based on</span>
+            <span class="comment">% previous mean and the current sample, applying a weight</span>
+            <span class="comment">% corresponding to the sample number</span>
+            muML = muML + (1/j)*(x - muML);
+            <span class="comment">% The seq. ML mean estimator does not rely on the previous</span>
+            <span class="comment">% samples, just the current sample and previous estimation</span>
+        <span class="keyword">end</span>
+        <span class="comment">% Insert mean and variance found for the trial and iteration #</span>
+        MLE_means(t, i) = muML;
+        <span class="comment">% The ML variance, however, does require knowledge of all samples</span>
+        MLE_variances(t, i) = (1/N)*(sum((Xsamples-muML).*(Xsamples-muML)));
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+
+toc
+<span class="comment">% Compute Mean Squared Error of each trial</span>
+MSE_mu = sum((MLE_means - unknownMu).^2, 2)/numberIterations;
+MSE_variance = sum((MLE_variances - unknownVariance).^2, 2)/numberIterations;
+
+t_sample = 10:10:(10*numberofTrials);
+figure;
+plot(t_sample, MSE_mu, <span class="string">'r'</span>, t_sample, MSE_variance, <span class="string">'b'</span>)
+title(<span class="string">'MSE of \mu_{ML} and \sigma_{ML}^{2} From Gaussian X'</span>)
+legend(<span class="string">'\mu_{ML}'</span>, <span class="string">'\sigma_{ML}^{2}'</span>)
+xlabel(<span class="string">'Number of samples of X used in the trial'</span>)
+ylabel(<span class="string">'Mean Squared Error (MSE)'</span>)
+</pre><pre class="codeoutput">Elapsed time is 70.651374 seconds.
+</pre><img vspace="5" hspace="5" src="SequentialMLGaussian_01.png" alt=""> <p class="footer"><br><a href="http://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2015a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Machine Learning, MATLAB Mini-Project 1: Sequential Estimators
+% Dennis Gavrilov, Andrew Koe, and Miraj Patel
+
+% Part 1a) Sequential Maximum Likelihood (ML) Estimate for a Gaussian R.V.
+clc; clear all; close all;
+% Randomly choose a mean between 0-5, and Variance between 0-2
+unknownMu = rand(1)*5;
+unknownSigma = rand(1)*sqrt(2);
+unknownVariance = unknownSigma^2;
+numberIterations = 1000;
+numberofTrials = 20;
+MLE_means = zeros(numberofTrials, numberIterations);
+MLE_variances = zeros(numberofTrials, numberIterations);
+
+tic;
+for i = 1:numberIterations
+    for t = 1:numberofTrials
+        % Set number of samples to 10*iteration number
+        N = 10*t;
+        muML = 0;
+        Xsamples = zeros(N, 1);
+        
+        % Generate each sample
+        for j = 1:N
+            x = normrnd(unknownMu, unknownSigma);
+            Xsamples(j) = x;
+            
+            % Adjust the sequential ML mean (mu) estimator based on
+            % previous mean and the current sample, applying a weight
+            % corresponding to the sample number
+            muML = muML + (1/j)*(x - muML);
+            % The seq. ML mean estimator does not rely on the previous
+            % samples, just the current sample and previous estimation
+        end
+        % Insert mean and variance found for the trial and iteration #
+        MLE_means(t, i) = muML;
+        % The ML variance, however, does require knowledge of all samples
+        MLE_variances(t, i) = (1/N)*(sum((Xsamples-muML).*(Xsamples-muML)));
+    end
+end 
+
+toc
+% Compute Mean Squared Error of each trial
+MSE_mu = sum((MLE_means - unknownMu).^2, 2)/numberIterations;
+MSE_variance = sum((MLE_variances - unknownVariance).^2, 2)/numberIterations;
+
+t_sample = 10:10:(10*numberofTrials);
+figure;
+plot(t_sample, MSE_mu, 'r', t_sample, MSE_variance, 'b')
+title('MSE of \mu_{ML} and \sigma_{ML}^{2} From Gaussian X')
+legend('\mu_{ML}', '\sigma_{ML}^{2}')
+xlabel('Number of samples of X used in the trial')
+ylabel('Mean Squared Error (MSE)')
+
+%%
+
+##### SOURCE END #####
+--></body></html>
